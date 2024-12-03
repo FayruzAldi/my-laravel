@@ -2,80 +2,110 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Student;
+use Illuminate\Http\Request;
 
 class StudentController extends Controller
 {
-
-
-    public function students()
+    public function index()
     {
-        $students = Student::all();
+        $students = Student::query()
+            ->select('id', 'name', 'email', 'grade_id', 'department_id')
+            ->with([
+                'grade:id,name',
+                'department:id,name'
+            ])
+            ->latest()
+            ->paginate(15);
+
+        if (request()->is('admin/*')) {
+            return view('admin.students', [
+                'title' => 'Manage Students',
+                'students' => $students
+            ]);
+        }
+
         return view('students', [
-            'title' => 'Students',
+            'title' => 'Daftar Siswa',
             'students' => $students
         ]);
     }
 
-
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function show(Student $student)
     {
-        return view('create-student', ['title' => 'Tambah Siswa Baru']);
+        return view('students.show', [
+            'title' => 'Detail Siswa',
+            'student' => $student
+        ]);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    public function create()
+    {
+        if (!auth()->guard('admin')->check()) {
+            abort(403);
+        }
+        return view('admin.students.create', ['title' => 'Tambah Siswa Baru']);
+    }
+
     public function store(Request $request)
     {
-        // Validasi input
+        if (!auth()->guard('admin')->check()) {
+            abort(403);
+        }
+
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
-            'grade' => 'required|string|max:255',
+            'grade_id' => 'required|exists:grades,id',
             'email' => 'required|email|unique:students,email',
             'address' => 'required|string',
         ]);
 
-        // Simpan data siswa baru
-        Student::create($validatedData);
+        $student = Student::create($validatedData);
+        $student->department_id = $student->grade->department_id;
+        $student->save();
 
-        return redirect()->route('students')->with('success', 'Siswa baru berhasil ditambahkan');
+        return redirect()->route('admin.students.index')->with('success', 'Siswa baru berhasil ditambahkan');
     }
 
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    public function edit(Student $student)
     {
-        //
+        if (!auth()->guard('admin')->check()) {
+            abort(403);
+        }
+
+        return view('admin.students.edit', [
+            'title' => 'Edit Siswa',
+            'student' => $student
+        ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
+    public function update(Request $request, Student $student)
     {
-        //
+        if (!auth()->guard('admin')->check()) {
+            abort(403);
+        }
+
+        $validatedData = $request->validate([
+            'name' => 'required|string|max:255',
+            'grade_id' => 'required|exists:grades,id',
+            'email' => 'required|email|unique:students,email,' . $student->id,
+            'address' => 'required|string',
+        ]);
+
+        $student->update($validatedData);
+        $student->department_id = $student->grade->department_id;
+        $student->save();
+
+        return redirect()->route('admin.students.index')->with('success', 'Data siswa berhasil diperbarui');
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    public function destroy(Student $student)
     {
-        //
-    }
+        if (!auth()->guard('admin')->check()) {
+            abort(403);
+        }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        $student->delete();
+        return back()->with('success', 'Siswa berhasil dihapus');
     }
 }

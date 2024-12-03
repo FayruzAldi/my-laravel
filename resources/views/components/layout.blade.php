@@ -9,7 +9,7 @@
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     {{-- Custom Font Inter --}}
     <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
-    @vite('resources/css/app.css')
+    @vite(['resources/css/app.css','resources/js/app.js'])
     <title>{{ $title }}</title>
 </head>
 
